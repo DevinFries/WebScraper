@@ -2,20 +2,45 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import random
+import json
 
 def scrape_api():
     """
-    Scrape data from a public API (JSONPlaceholder).
-    This function retrieves a list of posts and prints the ID and title.
+    Scrape data from Open Notify API which provides real-time information 
+    about the International Space Station (ISS) and the astronauts in space.
     """
-    url = "https://jsonplaceholder.typicode.com/posts"
+    # Get current astronauts in space
+    astronaut_url = "http://api.open-notify.org/astros.json"
+    # Get current ISS location
+    iss_location_url = "http://api.open-notify.org/iss-now.json"
+    
     try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an error for bad status codes
-        data = response.json()
-        print("=== Data from Public API ===")
-        for item in data[:10]:  # limiting to first 10 items for brevity
-            print(f"Post ID: {item['id']}, Title: {item['title']}")
+        # Get astronaut data
+        astronaut_response = requests.get(astronaut_url)
+        astronaut_response.raise_for_status()
+        astronaut_data = astronaut_response.json()
+        
+        # Get ISS location data
+        iss_response = requests.get(iss_location_url)
+        iss_response.raise_for_status()
+        iss_data = iss_response.json()
+        
+        # Display astronaut information
+        print("=== Real-time Space Data from Open Notify API ===")
+        print(f"There are currently {astronaut_data['number']} people in space:")
+        for person in astronaut_data['people']:
+            print(f"- {person['name']} on board {person['craft']}")
+        
+        # Display ISS location
+        latitude = iss_data['iss_position']['latitude']
+        longitude = iss_data['iss_position']['longitude']
+        timestamp = iss_data['timestamp']
+        
+        print(f"\nCurrent ISS Location:")
+        print(f"Latitude: {latitude}")
+        print(f"Longitude: {longitude}")
+        print(f"Timestamp: {timestamp} (Unix time)")
+        
     except requests.RequestException as e:
         print(f"Error fetching API data: {e}")
 
@@ -65,33 +90,72 @@ def scrape_webpage():
     except requests.RequestException as e:
         print(f"Error fetching webpage data: {e}")
 
-def scrape_weather():
+def scrape_cryptocurrency():
     """
-    Scrape weather data from National Weather Service.
-    This is a good example of a public data source that allows scraping.
+    Scrape current cryptocurrency prices from CoinGecko's public API.
     """
-    url = "https://www.weather.gov/"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        'vs_currency': 'usd',
+        'order': 'market_cap_desc',
+        'per_page': '10',
+        'page': '1',
+        'sparkline': 'false'
     }
     
     try:
-        print("\n=== Weather Data from National Weather Service ===")
-        response = requests.get(url, headers=headers)
+        print("\n=== Current Cryptocurrency Prices ===")
+        response = requests.get(url, params=params)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        crypto_data = response.json()
         
-        # Look for current weather alerts
-        alerts = soup.select('.alert-bar')
-        if alerts:
-            print("Current Weather Alerts:")
-            for alert in alerts[:5]:
-                print(f"- {alert.get_text(strip=True)}")
-        else:
-            print("No major weather alerts found.")
+        # Display cryptocurrency information
+        print(f"{'Name':<15} {'Symbol':<8} {'Current Price':>12} {'24h Change':>12} {'Market Cap':>15}")
+        print("-" * 65)
+        
+        for coin in crypto_data:
+            name = coin['name'][:14]
+            symbol = coin['symbol'].upper()
+            current_price = f"${coin['current_price']:,.2f}"
+            price_change = f"{coin['price_change_percentage_24h']:.2f}%"
+            market_cap = f"${coin['market_cap']:,.0f}"
             
-        # You could expand this to search for specific forecasts, etc.
+            print(f"{name:<15} {symbol:<8} {current_price:>12} {price_change:>12} {market_cap:>15}")
             
+    except requests.RequestException as e:
+        print(f"Error fetching cryptocurrency data: {e}")
+
+def scrape_weather():
+    """
+    Scrape weather data from OpenWeatherMap API (free tier).
+    Note: Replace 'YOUR_API_KEY' with an actual API key from openweathermap.org
+    """
+    # You need to sign up for a free API key at openweathermap.org
+    api_key = "YOUR_API_KEY"  # Replace with your actual API key
+    city = "London"
+    
+    if api_key == "YOUR_API_KEY":
+        print("\n=== Weather Data ===")
+        print("To use the weather API, you need to:")
+        print("1. Sign up for a free API key at openweathermap.org")
+        print("2. Replace 'YOUR_API_KEY' in the code with your actual API key")
+        print("3. Optionally change the city from 'London' to your preferred location")
+        return
+    
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        weather_data = response.json()
+        
+        print(f"\n=== Current Weather in {city} ===")
+        print(f"Temperature: {weather_data['main']['temp']}°C")
+        print(f"Feels Like: {weather_data['main']['feels_like']}°C")
+        print(f"Humidity: {weather_data['main']['humidity']}%")
+        print(f"Wind Speed: {weather_data['wind']['speed']} m/s")
+        print(f"Weather: {weather_data['weather'][0]['description']}")
+        
     except requests.RequestException as e:
         print(f"Error fetching weather data: {e}")
 
@@ -127,6 +191,9 @@ if __name__ == "__main__":
     print("Starting web scraping demonstration...\n")
     
     scrape_api()
+    be_nice_to_servers()
+    
+    scrape_cryptocurrency()
     be_nice_to_servers()
     
     scrape_webpage()
